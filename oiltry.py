@@ -20,19 +20,19 @@ def filter_color(rgb_image, lower_bound_color, upper_bound_color):
     cv2.imshow("hsv image",hsv_image)
 
     #find the upper and lower bounds of the yellow color (tennis ball)
-    yellowLower =(25, 155, 59)
-    yellowUpper = (75, 255, 255)
+    #yellowLower =(25, 155, 59)
+    #yellowUpper = (75, 255, 255)
 
     #define a mask using the lower and upper bounds of the yellow color 
     mask = cv2.inRange(hsv_image, lower_bound_color, upper_bound_color)
-
+    cv2.imshow('Mask',mask)
     return mask
 
 def getContours(binary_image):      
     #_, contours, hierarchy = cv2.findContours(binary_image, 
     #                                          cv2.RETR_TREE, 
     #                                           cv2.CHAIN_APPROX_SIMPLE)
-    _, contours, hierarchy = cv2.findContours(binary_image.copy(), 
+    contours, hierarchy = cv2.findContours(binary_image.copy(), 
                                             cv2.RETR_EXTERNAL,
 	                                        cv2.CHAIN_APPROX_SIMPLE)
     return contours
@@ -40,22 +40,25 @@ def getContours(binary_image):
 
 def draw_ball_contour(binary_image, rgb_image, contours):
     black_image = np.zeros([binary_image.shape[0], binary_image.shape[1],3],'uint8')
-    
+    count=0
     for c in contours:
         area = cv2.contourArea(c)
         perimeter= cv2.arcLength(c, True)
         ((x, y), radius) = cv2.minEnclosingCircle(c)
-        if (area>100):
+        if (area>100 and area<10000 and perimeter<3000):
             cv2.drawContours(rgb_image, [c], -1, (150,250,150), 1)
             cv2.drawContours(black_image, [c], -1, (150,250,150), 1)
             cx, cy = get_contour_center(c)
             cv2.circle(rgb_image, (cx,cy),(int)(radius),(0,0,255),1)
             cv2.circle(black_image, (cx,cy),(int)(radius),(0,0,255),1)
             cv2.circle(black_image, (cx,cy),5,(150,150,255),-1)
+            count+=1
             print ("Area: {}, Perimeter: {}".format(area, perimeter))
+    print('Number of detected plants= ',count)
     print ("number of contours: {}".format(len(contours)))
     cv2.imshow("RGB Image Contours",rgb_image)
     cv2.imshow("Black Image Contours",black_image)
+    return count
 
 def get_contour_center(contour):
     M = cv2.moments(contour)
@@ -68,20 +71,29 @@ def get_contour_center(contour):
 
 def main():
     image_name = "oil_palm2.jpg"
-    yellowLower =(25, 155, 59)
-    yellowUpper = (75, 255, 255)
-    rgb_image = read_rgb_image(image_name, True)
-    binary_image_mask = filter_color(rgb_image, yellowLower, yellowUpper)
-    contours = getContours(binary_image_mask)
-    draw_ball_contour(binary_image_mask, rgb_image,contours)
+    lsl=90
+    keep_count=[]
+    while lsl<195:
+        greenLower =(25, lsl, 62)
+        greenUpper = (75, 255, 255)
+        rgb_image = read_rgb_image(image_name, True)
+        binary_image_mask = filter_color(rgb_image, greenLower, greenUpper)
+        contours = getContours(binary_image_mask)
+        count=draw_ball_contour(binary_image_mask, rgb_image,contours)
+        if keep_count==[]:
+            keep_count.append(count)
+        elif keep_count[-1]<count:
+            keep_count.append(count)
+        lsl+=5
+    print('average plants=', max(keep_count))
 
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
 
 
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
